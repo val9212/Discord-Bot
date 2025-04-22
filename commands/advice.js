@@ -1,12 +1,12 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const snekfetch = require("snekfetch")
+const { Client, MessageEmbed } = require('discord.js');
+const fetch = require('node-fetch');
+
 exports.run = async (client, message, args) => {
     try {
-        		const { body } = await snekfetch.get('http://api.adviceslip.com/advice');
-        		message.channel.send(JSON.parse(body.toString()).slip.advice);
-        	} catch (err) {
-        		message.channel.send(`An error occurred: \`${err.message}\`. Try again later!`);
-        	}
-        }
-   
+        const response = await fetch('http://api.adviceslip.com/advice');
+        const data = await response.json();
+        message.channel.send(data.slip.advice);
+    } catch (err) {
+        message.channel.send(`An error occurred: \`${err.message}\`. Try again later!`);
+    }
+};
