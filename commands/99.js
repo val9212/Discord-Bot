@@ -34,7 +34,7 @@ exports.run = async (client, message, args) => {
     .setThumbnail('http://www.pngall.com/wp-content/uploads/2016/04/Dice-Free-Download-PNG.png')
     .setTitle(`🎲 The dice has rolled: ${dice}`);
 
-  if (dice >= 25) {
+  if (dice >= 99) {
     db.prepare('UPDATE profiles SET cash = ? WHERE guildId = ? AND userId = ?')
       .run(row.cash + wonAmount, message.guild.id, message.author.id);
     embed.setDescription(`✅ You have won $${wonAmount}!`);
