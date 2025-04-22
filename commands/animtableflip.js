@@ -1,5 +1,4 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
+require("discord.js");
 const frames = [
 	'(-°□°)-  ┬─┬',
 	'(╯°□°)╯    ]',
@@ -7,11 +6,13 @@ const frames = [
 	'(╯°□°)╯       [',
 	'(╯°□°)╯           ┬─┬'
 ];
-exports.run = async (client, message, args) => {
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+exports.run = async (client, message) => {
     const msg = await message.channel.send('(\\\\°□°)\\\\  ┬─┬');
     for (const frame of frames) {
-        setTimeout(() => {}, 4000);
+        await sleep(100);
         await msg.edit(frame);
     }
-    return message;
-}
+};
