@@ -11,8 +11,8 @@ exports.run = async (client, message, args) => {
     .setColor(0x00A2E8)
     .setThumbnail(client.user.displayAvatarURL())
     .addFields(
-      { name: 'Usage:', value: '>75 <amount>' },
-      { name: 'Example:', value: '>75 1000' }
+      { name: 'Usage:', value: '>99 <amount>' },
+      { name: 'Example:', value: '>99 1000' }
     );
 
   if (!args[0]) return message.channel.send({ embeds: [usage] });
