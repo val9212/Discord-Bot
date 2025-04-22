@@ -25,9 +25,12 @@ module.exports = (client, guild) => {
     modonlycommands TEXT,
     botlock TEXT,
     botlockchannel TEXT,
-    levelsystem TEXT
+    levelsystem TEXT,
+    starsys TEXT,
+    starchannel TEXT
   )`).run();
 
+  
   const row = db.prepare('SELECT * FROM scores WHERE guildId = ?').get(guild.id);
 
   if (!row) {
@@ -36,12 +39,12 @@ module.exports = (client, guild) => {
       logschannel, automoderation, wlchannel, wlsystem, welcomemessage,
       leavemessage, dmmessage, slowmode, slowmodetime, invitelinkprotection,
       websitelinkprotection, dupcharactersprotection, antijoin, modonlycommands,
-      botlock, botlockchannel, levelsystem
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      botlock, botlockchannel, levelsystem, starsys, starchannel
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
       guild.id, ">", 1, "enabled", "none", "enabled", "logs", "disabled",
       "welcome", "disabled", "Hello %MENTION%, welcome to %GUILDNAME%.",
       "%NAME% has left the guild", "disabled", "disabled", 3, "disabled",
-      "disabled", "disabled", "disabled", "disabled", "disabled", "bot-commands", "disabled"
+      "disabled", "disabled", "disabled", "disabled", "disabled", "bot-commands", "disabled", "disabled", "starboard"
     );
   }
 };

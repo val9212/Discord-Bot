@@ -1,18 +1,19 @@
-const { EmbedBuilder } = require('discord.js');
-const db = require('better-sqlite3')('./assets/guildsettings.sqlite');
+const { EmbedBuilder, ChannelType } = require('discord.js');
+const Database = require('better-sqlite3');
+const db = new Database('./assets/guildsettings.sqlite');
 
 module.exports = async (client, oldMember, newMember) => {
-  if (oldMember.user.bot) return;
+  if (oldMember.user?.bot) return;
+  if (!oldMember.guild || !newMember.guild) return;
 
   const row = db.prepare('SELECT * FROM scores WHERE guildId = ?').get(oldMember.guild.id);
   if (!row || row.logsenabled === 'disabled') return;
 
-  const logChannel = oldMember.guild.channels.cache.find(c => c.name === row.logschannel);
+  const logChannel = oldMember.guild.channels.cache.find(c => c.id === row.logschannel && c.type === ChannelType.GuildText);
   if (!logChannel) return;
 
-  const roleDiff = (before, after) => before.roles.cache.filter(r => !after.roles.cache.has(r.id)).first();
-  const added = roleDiff(newMember, oldMember);
-  const removed = roleDiff(oldMember, newMember);
+  const addedRoles = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id));
+  const removedRoles = oldMember.roles.cache.filter(r => !newMember.roles.cache.has(r.id));
 
   const baseEmbed = new EmbedBuilder()
     .setColor(0x00A2E8)
@@ -20,17 +21,22 @@ module.exports = async (client, oldMember, newMember) => {
     .addFields({ name: 'User', value: `${newMember.user.tag} (ID: ${newMember.user.id})` })
     .setTimestamp();
 
-  if (removed) {
+  if (removedRoles.size > 0) {
     logChannel.send({
-      embeds: [baseEmbed.setDescription(`Role Taken: ${removed.name}`)],
+      embeds: [baseEmbed.setDescription(`Roles Removed: ${removedRoles.map(r => r.name).join(', ')}`)],
     });
-  } else if (added) {
+  }
+
+  if (addedRoles.size > 0) {
     logChannel.send({
-      embeds: [baseEmbed.setDescription(`Role Given: ${added.name}`)],
+      embeds: [baseEmbed.setDescription(`Roles Added: ${addedRoles.map(r => r.name).join(', ')}`)],
     });
-  } else if (oldMember.nickname !== newMember.nickname) {
+  }
+
+  if (oldMember.nickname !== newMember.nickname) {
     logChannel.send({
-      embeds: [baseEmbed.setDescription(`New Nickname: ${newMember.nickname || 'None'}`)],
+      embeds: [baseEmbed.setDescription(`Nickname changed: \`${oldMember.nickname || 'None'}\` → \`${newMember.nickname || 'None'}\``)],
     });
   }
 };
+

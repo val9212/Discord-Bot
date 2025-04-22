@@ -1,6 +1,6 @@
-const { EmbedBuilder } = require('discord.js');
-const sql = require('better-sqlite3');
-const db = sql('./assets/guildsettings.sqlite');
+const { EmbedBuilder, ChannelType } = require('discord.js');
+const Database = require('better-sqlite3');
+const db = new Database('./assets/guildsettings.sqlite');
 
 module.exports = (client, message) => {
     if (message.author.bot) return;
@@ -16,7 +16,7 @@ module.exports = (client, message) => {
     const descriptionfix = description.substr(0, 600);
 
     const guild = message.guild;
-    const modlog = guild.channels.cache.find(channel => channel.name === row.logschannel);
+    const modlog = guild.channels.cache.find(c => c.id === row.logschannel && c.type === ChannelType.GuildText);
     if (!modlog) return;
 
     const embed = new EmbedBuilder()

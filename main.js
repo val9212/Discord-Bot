@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ChannelType, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, ChannelType, EmbedBuilder, PermissionsBitField, PermissionFlagsBits } = require('discord.js');
 const client = new Client({	intents: [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
@@ -14,7 +14,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const db = new Database("./assets/guildsettings.sqlite");
 const invitecheck = ["discord.gg", "discord.me", "discord.io/", "discordapp.com/invite"]
-const weblinkcheck = ["http", "www.", ".com", "fr", ".net", ".org", ".ca", ".co.uk", ".fr"]
+const weblinkcheck = ["http", "www.", ".com", ".net", ".org", ".ca", ".co.uk", ".fr"]
 
 const config = require("./assets/jsons/config.json");
 
@@ -103,26 +103,40 @@ client.on('guildDelete', (guild) => {
   db.prepare(`DELETE FROM scores WHERE guildId = ?`).run(guild.id)
 });
 
-client.on("guildMemberAdd", (member) => {
-  if (!member.guild.member(client.user).hasPermission('SEND_MESSAGES')) return;
-    if (!member.guild.member(client.user).hasPermission('VIEW_CHANNEL')) return;
-    if (!member.guild.member(client.user).hasPermission('READ_MESSAGE_HISTORY')) return;
-    const row = db.prepare(`SELECT * FROM scores WHERE guildId = ?`).get(member.guild.id);
-    if (row?.antijoin === "enabled") {
-      member.user.send(`Anti-join has been enabled in ${member.guild.name}, you have been kicked automatically.`);
-      member.guild.members.kick(member.user.id).catch(console.error);
-    } else {
-      if (!member.guild.members.me.permissions.has('ManageRoles')) return;
-      const autoRole = member.guild.roles.cache.find(r => r.name === row.roletogive);
-      if (autoRole) {
-        member.roles.add(autoRole).catch(console.error);
-      }}
+client.on("guildMemberAdd", async (member) => {
+  const clientMember = member.guild.members.cache.get(client.user.id); 
+  if (!clientMember.permissions.has('SEND_MESSAGES')) return;
+  if (!clientMember.permissions.has('VIEW_CHANNEL')) return;
+  if (!clientMember.permissions.has('READ_MESSAGE_HISTORY')) return;
+  const row = db.prepare(`SELECT * FROM scores WHERE guildId = ?`).get(member.guild.id);
+  if (row?.antijoin === "enabled") {
+    try {
+      await member.user.send(`Anti-join has been enabled in ${member.guild.name}, you have been kicked automatically.`);
+      await member.guild.members.kick(member.user.id);
+    } catch (err) {
+      console.error('Error sending message or kicking the member:', err);
+    }
+  } else {
+    if (!member.guild.members.me.permissions.has('MANAGE_ROLES')) return;
+    const autoRole = member.guild.roles.cache.find(r => r.id === row.roletogive);
+    if (autoRole) {
+      try {
+        await member.roles.add(autoRole);
+      } catch (err) {
+        console.error('Error adding the role to the member:', err);
+      }
+    }
+  }
 });
 
 client.on("messageReactionAdd", async (reaction, user) => {
   if (reaction.partial) await reaction.fetch();
   if (reaction.message.partial) await reaction.message.fetch();
   if (user.bot) return;
+  const row = db.prepare("SELECT * FROM scores WHERE guildId = ?").get(reaction.message.guild.id);
+  if (!row) return;
+  if (row.starsys === 'disabled') return;
+
   if (reaction.emoji.name !== "⭐") return;
 
   const message = reaction.message;
@@ -141,7 +155,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
   }
 
   const starboardChannel = message.guild.channels.cache.find(
-    (ch) => ch.name === "starboard" && ch.type === ChannelType.GuildText
+    (c) => c.id === row.starchannel && c.type === ChannelType.GuildText
   );
   if (!starboardChannel) return;
 
@@ -171,9 +185,7 @@ client.on("messageCreate", async (message) => {
   const prefix = row.prefix;
   const args = message.content.slice(prefix.length).trim().split(/ +/g);
 
-  // Mention bot
   if (message.mentions.has(client.user)) {
-    console.log("Bot mentionné: ", message.content);
     return message.reply(`current guild prefix is \`${prefix}\`.`);
   }
 
@@ -183,12 +195,15 @@ client.on("messageCreate", async (message) => {
       !message.content.includes(prefix) &&
       row.automoderation === "enabled" &&
       row.invitelinkprotection === "enabled" &&
-      !message.member.permissions.has("KICK_MEMBERS")
+      !message.member.permissions.has(PermissionFlagsBits.KickMembers)
     ) {
-      message.delete();
-      const modlog = message.guild.channels.cache.find(c => c.name === row.logschannel);
+      const warnMessage = await message.channel.send(`${message.author}, not allowed to post invite links.`);
+      
+      await message.delete().catch(() => {});
+      setTimeout(() => warnMessage.delete().catch(() => {}), 6000);
+        const modlog = message.guild.channels.cache.find(c => c.id === row.logschannel);
       if (modlog && row.logsenabled === "enabled") {
-        const embed = new Discord.EmbedBuilder()
+        const embed = new EmbedBuilder()
           .setColor(0x00A2E8)
           .setTitle("Action: Auto Moderation")
           .addFields(
@@ -198,25 +213,32 @@ client.on("messageCreate", async (message) => {
             { name: "Reason", value: "Invite Link", inline: true },
             { name: "Invite link", value: message.cleanContent }
           )
-          .setFooter({ text: "Time used: " + message.createdAt.toDateString() });
+          .setFooter({ text: `Time used: ${new Date(message.createdTimestamp).toDateString()}` });
+  
         modlog.send({ embeds: [embed] });
       }
-      return message.reply("not allowed to post invite links.").then(m => m.delete({ timeout: 6000 }));
+  
+      return;
     }
   }
-
+  
   // Website Link Protection
   if (weblinkcheck.some(word => message.content.toLowerCase().includes(word))) {
     if (
       !message.content.includes(prefix) &&
       row.automoderation === "enabled" &&
       row.websitelinkprotection === "enabled" &&
-      !message.member.permissions.has("KICK_MEMBERS")
+      !message.member.permissions.has(PermissionFlagsBits.KickMembers)
     ) {
-      message.delete();
-      const modlog = message.guild.channels.cache.find(c => c.name === row.logschannel);
+      const warnMessage = await message.channel.send({
+        content: `${message.author}, not allowed to post website links.`,
+        allowedMentions: { users: [] }
+      });
+      await message.delete().catch(() => {});
+      setTimeout(() => warnMessage.delete().catch(() => {}), 6000);
+      const modlog = message.guild.channels.cache.find(c => c.id === row.logschannel);
       if (modlog && row.logsenabled === "enabled") {
-        const embed = new Discord.EmbedBuilder()
+        const embed = new EmbedBuilder()
           .setColor(0x00A2E8)
           .setTitle("Action: Auto Moderation")
           .addFields(
@@ -226,10 +248,11 @@ client.on("messageCreate", async (message) => {
             { name: "Reason", value: "Website Link", inline: true },
             { name: "Website link", value: message.cleanContent }
           )
-          .setFooter({ text: "Time used: " + message.createdAt.toDateString() });
+          .setFooter({ text: `Time used: ${new Date(message.createdTimestamp).toDateString()}` });
         modlog.send({ embeds: [embed] });
       }
-      return message.reply("not allowed to post website links.").then(m => m.delete({ timeout: 6000 }));
+
+      return;
     }
   }
 
@@ -238,16 +261,23 @@ client.on("messageCreate", async (message) => {
     !message.content.includes(prefix) &&
     row.automoderation === "enabled" &&
     row.dupcharactersprotection === "enabled" &&
-    !message.member.permissions.has("KICK_MEMBERS")
+    !message.member.permissions.has(PermissionFlagsBits.KickMembers)
   ) {
     const text = args.join(" ");
     if (!text.includes(".")) {
       const hasDuplicates = /([a-zA-Z])\1+$/;
       if (hasDuplicates.test(text)) {
-        message.delete();
-        const modlog = message.guild.channels.cache.find(c => c.name === row.logschannel);
+        const warnMessage = await message.channel.send({
+          content: `${message.author}, message contains duplicated characters.`,
+          allowedMentions: { users: [] }
+        });
+  
+        await message.delete().catch(() => {});
+        setTimeout(() => warnMessage.delete().catch(() => {}), 6000);
+  
+        const modlog = message.guild.channels.cache.find(c => c.id === row.logschannel);
         if (modlog && row.logsenabled === "enabled") {
-          const embed = new Discord.EmbedBuilder()
+          const embed = new EmbedBuilder()
             .setColor(0x00A2E8)
             .setTitle("Action: Auto Moderation")
             .addFields(
@@ -257,10 +287,11 @@ client.on("messageCreate", async (message) => {
               { name: "Reason", value: "Duplicated Characters", inline: true },
               { name: "Message Content", value: message.cleanContent }
             )
-            .setFooter({ text: "Time used: " + message.createdAt.toDateString() });
+            .setFooter({ text: `Time used: ${new Date(message.createdTimestamp).toDateString()}` });
           modlog.send({ embeds: [embed] });
         }
-        return message.reply("message contains duplicated characters.").then(m => m.delete({ timeout: 6000 }));
+  
+        return;
       }
     }
   }
@@ -283,7 +314,7 @@ client.on("messageCreate", async (message) => {
 
   if (talkedRecently.has(message.author.id)) return;
   talkedRecently.add(message.author.id);
-  setTimeout(() => talkedRecently.delete(message.author.id), 60000);
+  setTimeout(() => talkedRecently.delete(message.author.id), 0);
 
   const xpgained = Math.floor(Math.random() * 15) + 1;
 
