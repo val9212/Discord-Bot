@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, ChannelType, EmbedBuilder, PermissionsBitField, PermissionFlagsBits } = require('discord.js');
+const config = require('./config.js');
 const client = new Client({	intents: [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
@@ -15,8 +16,6 @@ const Database = require('better-sqlite3');
 const db = new Database("./assets/guildsettings.sqlite");
 const invitecheck = ["discord.gg", "discord.me", "discord.io/", "discordapp.com/invite"]
 const weblinkcheck = ["http", "www.", ".com", ".net", ".org", ".ca", ".co.uk", ".fr"]
-
-const config = require("./assets/jsons/config.json");
 
 client.on('warn', err => console.warn('[WARNING]', err));
 
@@ -360,4 +359,4 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-client.login('TOKEN');
+client.login(config.TOKEN);
