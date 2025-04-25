@@ -1,7 +1,7 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
+const { PermissionsBitField } = require('discord.js');
+
 exports.run = (client, message, args) => {
-      var coinflip = ['Heads!','Tails!'];
-      message.channel.send(coinflip[Math.floor(Math.random () * coinflip.length)]);
-}
-   
+    const coinflip = ['Heads!', 'Tails!'];
+    message.channel.send(coinflip[Math.floor(Math.random() * coinflip.length)]);
+};
+
