@@ -1,31 +1,35 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-const fs = require("fs")
-const version = "v11.3.2"
-exports.run = (client, message, args) => {
-      fs.readdir("./commands/", (err, files) => {
-       const filez = files.length
-       if (err) return console.error(err);
-       sql.get(`SELECT * FROM scores WHERE guildId ="${message.guild.id}"`).then(row => {
-       if (!row) return;
-      const embed = new Discord.RichEmbed()
-            .setAuthor(client.user.username, client.user.avatarURL)
+const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const Database = require('better-sqlite3');
+const db = new Database("./assets/guildsettings.sqlite");
+
+const version = 'v14.0.0'
+
+exports.run = (client, message) => {
+    fs.readdir('./commands/', (err, files) => {
+        const filez = files.length;
+        if (err) return console.error(err);
+
+        const row = db.prepare('SELECT * FROM scores WHERE guildId = ?').get(message.guild.id);
+        if (!row) return;
+
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: client.user.username, iconURL: client.user.avatarURL() })
             .setColor(0x00A2E8)
-            .addField("Memory", `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}` + "MBS", true)
-            .addField("Commands:", `${filez + 11}`)
-            .addField('Total Users', `${client.users.size}`, true)
-            .addField('Total Channels:', `${client.channels.size}`, true)
-            .addField('Total Servers', Math.ceil(client.guilds.size), true)
-            .addField('Bot Created', client.user.createdAt.toLocaleString())
-            .addField('Library', `discord.js ${version}`, true)
-            .addField('Node.js Version', process.version, true)
-            .addField('Bot Version', "0.9.9.5", true)
+            .addFields(
+                { name: 'Memory', value: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MBS`, inline: true },
+                { name: 'Commands:', value: `${filez + 11}`, inline: true },
+                { name: 'Total Users', value: `${client.users.cache.size}`, inline: true },
+                { name: 'Total Channels:', value: `${client.channels.cache.size}`, inline: true },
+                { name: 'Total Servers', value: `${Math.ceil(client.guilds.cache.size)}`, inline: true },
+                { name: 'Bot Created', value: client.user.createdAt.toLocaleString() },
+                { name: 'Library', value: `discord.js ${version}`, inline: true },
+                { name: 'Node.js Version', value: process.version, inline: true },
+                { name: 'Bot Version', value: '1.0.5', inline: true }
+            )
             .setTimestamp()
-            .setFooter(client.user.username, client.user.avatarURL);
-      message.channel.send({embed}) 
-            })
-      })
- }
-   
+            .setFooter({ text: client.user.username, iconURL: client.user.avatarURL() });
+
+        message.channel.send({ embeds: [embed] });
+    });
+};
