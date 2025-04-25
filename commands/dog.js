@@ -1,12 +1,20 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
+const { EmbedBuilder } = require('discord.js');
+const fetch = require('node-fetch');
+
 exports.run = async (client, message, args) => {
-      const superagent = require("superagent");
-      const { body } = await superagent
-      .get('https://random.dog/woof.json');
-      const embed  = new Discord.RichEmbed()
+  try {
+    const response = await fetch('https://random.dog/woof.json');
+    const body = await response.json();
+
+    if (body.url.endsWith('.mp4') || body.url.endsWith('.webm')) return;
+
+    const embed = new EmbedBuilder()
       .setColor(0x00A2E8)
-      .setImage(body.url)
-      if (body.url.includes(".mp4")) return; // As mp4s cant really be set as a image for a embed and will cause a error in the console
-      message.channel.send({embed})
-}
+      .setImage(body.url);
+
+    await message.channel.send({ embeds: [embed] });
+  } catch (err) {
+    console.error(err);
+    message.channel.send("Something went wrong fetching the dog image.");
+  }
+};
