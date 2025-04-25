@@ -1,56 +1,80 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-exports.run = (client, message, args) => {
-    if (!message.member.hasPermission("MANAGE_GUILD")) return message.channel.send("You're missing MANAGE_GUILD permission");
-    if (!message.guild.member(client.user).hasPermission('MANAGE_ROLES')) return message.reply('Sorry, i dont have the perms to do this cmd i need MANAGE_ROLES. :x:')
-  sql.get(`SELECT * FROM scores WHERE guildId ="${message.guild.id}"`).then(row => {
-    const prefixtouse = row.prefix
-    const embed10 = new Discord.RichEmbed()
-            .setColor(0x00A2E8)
-            .setThumbnail(client.user.avatarURL)
-            .setTitle("Command: " + prefixtouse + "autorole")
-            .addField("Usage", prefixtouse + "autorole [enable/disable] [role name]")
-            .addField("Example", prefixtouse + "autorole enable Members")
-            .setDescription("Description: " + "Enables/disables auto role on join.");
+const { PermissionsBitField, EmbedBuilder } = require("discord.js");
+const Database = require('better-sqlite3');
+const db = new Database("./assets/guildsettings.sqlite");
 
-      const optiontopick = args[0]
-      if (optiontopick === "enable") {
-            let roletogive = args.slice(1).join(" ")
-            const roletogivefix = roletogive.replace(/[^\x00-\x7F]/g, "");
-                    const prefixtouse = row.prefix
-        if (roletogive.length < 1) return message.channel.send(usage)
+exports.run = async (client, message, args) => {
+  const row = db.prepare("SELECT * FROM scores WHERE guildId = ?").get(message.guild.id);
+  const prefix = row?.prefix || "!";
+  const option = args[0];
 
-        sql.run(`UPDATE scores SET autoroleenabled = "enabled", roletogive = "${roletogivefix}", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-        message.channel.send("Members will now get the role " + roletogivefix + " when they join the guild from now on.")
+  const usageEmbed = new EmbedBuilder()
+    .setColor(0x00A2E8)
+    .setThumbnail(client.user.displayAvatarURL())
+    .setTitle(`Command: ${prefix}autorole`)
+    .setDescription("Enables/disables auto role on join.")
+    .addFields(
+      { name: "Usage", value: `${prefix}autorole [enable/disable] [role id]` },
+      { name: "Example", value: `${prefix}autorole enable Members` }
+    );
 
-        let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-        const embed = new Discord.RichEmbed()
-            .setColor(0x00A2E8)
-            .setTitle("Case #" + row.casenumber + " | Action:  Auto Role Enabled")
-            .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-            .addField("Role to give", roletogivefix, true)
-            .setFooter("Time used: " + message.createdAt.toDateString())
+  if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+    return message.reply("You're missing the **MANAGE_GUILD** permission.");
+  }
 
-        if (!modlog) return;
-        if (row.logsenabled === "disabled") return;
-        return client.channels.get(modlog.id).send({embed});
-  } else if (optiontopick === "disable") {
-        sql.run(`UPDATE scores SET autoroleenabled = "disabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-    message.channel.send("I have disabled auto role for this guild.")
+  if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    return message.reply("I need the **MANAGE_ROLES** permission to execute this command.");
+  }
 
-    let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-    const embed = new Discord.RichEmbed()
-        .setColor(0x00A2E8)
-        .setTitle("Case #" + row.casenumber + " | Action:  Auto Role Disabled")
-        .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-        .setFooter("Time used: " + message.createdAt.toDateString())
-    if (!modlog) return;
-    if (row.logsenabled === "disabled") return;
-    return client.channels.get(modlog.id).send({embed});
-        } else {
-            message.channel.send(embed10)
-        }
-    })
-}
+  if (!option || !["enable", "disable"].includes(option)) {
+    return message.channel.send({ embeds: [usageEmbed] });
+  }
+
+  if (option === "enable") {
+    const roleName = args.slice(1).join(" ").replace(/[^\x00-\x7F]/g, "");
+
+    if (!roleName) return message.channel.send({ embeds: [usageEmbed] });
+
+    db.prepare("UPDATE scores SET autoroleenabled = 'enabled', roletogive = ?, casenumber = ? WHERE guildId = ?")
+      .run(roleName, row.casenumber + 1, message.guild.id);
+    
+    const autoRole = message.member.guild.roles.cache.find(r => r.id === roleName);
+
+    message.channel.send(`Members will now get the role **${autoRole.name}** when they join the guild.`);
+
+    if (row.logsenabled !== "disabled") {
+      const logChannel = message.guild.channels.cache.find(c => c.id === row.logschannel);
+      if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+          .setColor(0x00A2E8)
+          .setTitle(`Case #${row.casenumber} | Action: Auto Role Enabled`)
+          .addFields(
+            { name: "Moderator", value: `${message.author.tag} (ID: ${message.author.id})` },
+            { name: "Role to give", value: roleName, inline: true }
+          )
+          .setFooter({ text: `Time used: ${message.createdAt.toDateString()}` });
+        logChannel.send({ embeds: [logEmbed] });
+      }
+    }
+  }
+
+  if (option === "disable") {
+    db.prepare("UPDATE scores SET autoroleenabled = 'disabled', casenumber = ? WHERE guildId = ?")
+      .run(row.casenumber + 1, message.guild.id);
+
+    message.channel.send("Auto role has been **disabled** for this guild.");
+
+    if (row.logsenabled !== "disabled") {
+      const logChannel = message.guild.channels.cache.find(c => c.id === row.logschannel);
+      if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+          .setColor(0x00A2E8)
+          .setTitle(`Case #${row.casenumber} | Action: Auto Role Disabled`)
+          .addFields(
+            { name: "Moderator", value: `${message.author.tag} (ID: ${message.author.id})` }
+          )
+          .setFooter({ text: `Time used: ${message.createdAt.toDateString()}` });
+        logChannel.send({ embeds: [logEmbed] });
+      }
+    }
+  }
+};
