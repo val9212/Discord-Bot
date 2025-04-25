@@ -1,46 +1,69 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-exports.run = (client, message, args) => {
-    if (!message.guild.member(client.user).hasPermission('MANAGE_ROLES')) return message.reply('Sorry, i dont have the perms to do this cmd i need MANAGE_ROLES. :x:')
-     if (message.member.hasPermission("MANAGE_ROLES")) {
-         sql.get(`SELECT * FROM scores WHERE guildId ="${message.guild.id}"`).then(row => {
-            const prefixtouse = row.prefix
-            const usage = new Discord.RichEmbed()
-            .setColor(0x00A2E8)
-            .setThumbnail(client.user.avatarURL)
-            .setTitle("Command: " + prefixtouse + "createrole")
-            .addField("Usage", prefixtouse + "createrole <rolename> <rolecolor>")
-            .addField("Example", prefixtouse + "createrole Mods 0x0F01A0")
-            .setDescription("Description: " + "Creates a new role in the current server");
+const { Client, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const Database = require("better-sqlite3");
+const db = new Database("./assets/guildsettings.sqlite");
 
-            let guild = message.member.guild;
-            let rolename = args[0]
-            let color2 = args[1] || `FFFFFF`;
-            let reason = args[2] || `Moderator didn't give a reason.`;
-            console.log(rolename + " | " + color2 + " was created")
-            if (rolename.length < 1) return message.channel.send(usage)
-            if (color2.length < 1) return message.channel.send(usage)
-            guild.createRole({
-                name: `${rolename}`,
-                color: `${color2}`
-            });
-            let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-            message.reply("I have made the role: " + rolename + " with the color: " + color2);
-            sql.run(`UPDATE scores SET casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-            const embed = new Discord.RichEmbed()
-             .setColor(0x00A2E8)
-             .setTitle("Case #" + row.casenumber + " | Action: Created Role")
-             .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-             .addField("User", user.user.tag + " (ID: " + user.user.id + ")")
-             .addField("In channel", message.channel.name, true)
-             .addField("Reason", reason, true)
-             .setFooter("Time used: " + message.createdAt.toDateString())
-             if (!modlog) return;
-             if (row.logsenabled === "disabled") return;
-             client.channels.get(modlog.id).send({embed});
-         })
+exports.run = async (client, message, args) => {
+    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        return message.reply('Sorry, I don\'t have the `MANAGE_ROLES` permission to run this command. :x:');
     }
-}
-   
+
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        return message.reply('You need the `MANAGE_ROLES` permission to use this command. :x:');
+    }
+
+    try {
+        const row = db.prepare(`SELECT * FROM scores WHERE guildId = ?`).get(message.guild.id);
+        const prefixtouse = row.prefix;
+
+        const usage = new EmbedBuilder()
+            .setColor(0x00A2E8)
+            .setThumbnail(client.user.avatarURL())
+            .setTitle(`Command: ${prefixtouse}createrole`)
+            .addFields(
+                { name: "Usage", value: `${prefixtouse}createrole <rolename> <rolecolor>` },
+                { name: "Example", value: `${prefixtouse}createrole Mods 0x0F01A0` }
+            )
+            .setDescription("Creates a new role in the current server");
+
+        let rolename = args[0];
+        let color2 = args[1] || 'FFFFFF'; 
+        let reason = args[2] || 'Moderator didn\'t give a reason.';
+
+        if (!rolename || !color2) {
+            return message.channel.send({ embeds: [usage] });
+        }
+
+        const guild = message.guild;
+        const newRole = await guild.roles.create({
+            name: rolename,
+            color: color2
+        });
+
+        console.log(`${rolename} | ${color2} was created`);
+
+        message.reply(`I have created the role: **${rolename}** with the color: **${color2}**`);
+
+        const update = db.prepare(`UPDATE scores SET casenumber = ? WHERE guildId = ?`);
+        update.run(row.casenumber + 1, message.guild.id);
+
+        let modlog = message.guild.channels.cache.find(c => c.id === row.logschannel);
+        const embed = new EmbedBuilder()
+            .setColor(0x00A2E8)
+            .setTitle(`Case #${row.casenumber + 1} | Action: Created Role`)
+            .addFields(
+                { name: "Moderator", value: `${message.author.tag} (ID: ${message.author.id})` },
+                { name: "Role", value: `${rolename} (ID: ${newRole.id})` },
+                { name: "In channel", value: message.channel.name, inline: true },
+                { name: "Reason", value: reason, inline: true }
+            )
+            .setFooter({ text: `Time used: ${message.createdAt.toDateString()}` });
+
+        if (modlog && row.logsenabled !== 'disabled') {
+            modlog.send({ embeds: [embed] });
+        }
+
+    } catch (error) {
+        console.error(error);
+        message.reply('An error occurred while processing your request. Please try again later. :x:');
+    }
+};
