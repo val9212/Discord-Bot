@@ -4,46 +4,37 @@ const fs = require('fs/promises');
 const { createCanvas, loadImage } = require('canvas');
 
 exports.run = async (client, message, args) => {
-  // Check if the bot has permission to attach files
   if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.AttachFiles)) {
     return message.reply('Sorry, I need the `ATTACH_FILES` permission to run this command. :x:');
   }
 
-  // Check if a user was mentioned
   if (message.mentions.users.size < 1) {
     return message.channel.send("You didn't mention a user to have a crush on them.");
   }
 
-  // Function to create the "crush" image
   const getCrushImage = async (slapper, slapped) => {
     try {
-      // Load the plate image
       const plate = await fs.readFile('./assets/images/plate_crush.png');
       
-      // Replace .gif with .png for avatar URLs
       const pngSlapper = slapper.replace('.gif', '.png');
       const pngSlapped = slapped.replace('.gif', '.png');
       
-      // Fetch avatars of the users
       const Slapper = await fetch(pngSlapper);
       const Slapped = await fetch(pngSlapped);
 
       const slapperBuffer = await Slapper.buffer();
       const slappedBuffer = await Slapped.buffer();
 
-      // Create canvas for the image
       const canvas = createCanvas(600, 873);
       const ctx = canvas.getContext('2d');
 
-      // Load images and handle the canvas drawing
       const slappedImage = await loadImage(slappedBuffer);
-      ctx.rotate(-0.09); // Slight rotation
-      ctx.drawImage(slappedImage, 109, 454, 417, 417); // Draw slapped image
+      ctx.rotate(-0.09);
+      ctx.drawImage(slappedImage, 109, 454, 417, 417); 
 
-      // Reset canvas transformation
-      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformations
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       const plateImage = await loadImage(plate);
-      ctx.drawImage(plateImage, 0, 0, 600, 873); // Draw the plate
+      ctx.drawImage(plateImage, 0, 0, 600, 873);
 
       const slapperImage = await loadImage(slapperBuffer);
       ctx.save();
