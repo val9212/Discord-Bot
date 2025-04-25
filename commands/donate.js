@@ -1,12 +1,15 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
+const { EmbedBuilder } = require('discord.js');
+const config = require("../config.js")
+
 exports.run = async (client, message, args) => {
-      let embed = new Discord.RichEmbed()
-  .setThumbnail("http://logok.org/wp-content/uploads/2014/05/Paypal-logo-pp-2014.png")
-  .setDescription("Thank you for considering donating, the bots funding costs not a lot of money, so any bit of money would help our discord bot stay alive, thank you and bot on!")
-  .setColor(0x00A2E8)
-  .addField("Paypal Email", "idon'thavepaypal@misterUwU.com")
-  .addField("Patreon", "don't exist")
-  message.channel.send({embed});
-}
-   
+  const embed = new EmbedBuilder()
+    .setThumbnail("http://logok.org/wp-content/uploads/2014/05/Paypal-logo-pp-2014.png")
+    .setDescription("Thank you for considering donating, the bot’s funding costs not a lot of money, so any bit of money would help our Discord bot stay alive. Thank you and bot on!")
+    .setColor(0x00A2E8)
+    .addFields(
+      { name: "Paypal Email", value: `${config.PAYPAL_EMAIL}` },
+      { name: "Patreon", value: `${config.PATREON}` }
+    );
+
+  await message.channel.send({ embeds: [embed] });
+};
