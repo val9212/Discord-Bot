@@ -1,15 +1,14 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const snekfetch = require("snekfetch")
+const { EmbedBuilder } = require('discord.js');
+
 exports.run = (client, message, args) => {
-      if (message.mentions.users.size < 1) return message.channel.send("you can't kiss nobody")
-      let user = message.guild.member(message.mentions.users.first());
-            message.channel.send(`${user} You got a cuddle from ${message.author.username} ❤`,{
-                embed: {
-                    image: {
-                        url: "https://i.imgur.com/0yAIWbg.gif"
-                    }
-                }
-            })
-}
-   
+    const user = message.mentions.users.first();
+
+    if (!user) return message.channel.send("you can't cuddle nobody");
+
+    const embed = new EmbedBuilder()
+        .setDescription(`${user} You got a cuddle from ${message.author.username} ❤`)
+        .setImage("https://i.imgur.com/0yAIWbg.gif")
+        .setColor(0xFF69B4);
+
+    message.channel.send({ embeds: [embed] });
+};
