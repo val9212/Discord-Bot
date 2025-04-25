@@ -1,26 +1,44 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
+const { PermissionsBitField } = require("discord.js");
+const Database = require("better-sqlite3");
+const db = new Database("./assets/guildsettings.sqlite");
+
 exports.run = (client, message, args) => {
-if (message.member.hasPermission("KICK_MEMBERS")) {
-  try {
-    if (!message.guild.member(client.user).hasPermission('KICK_MEMBERS')) return message.reply('Sorry, i dont have the perms to do this cmd i need KICK_MEMBERS. :x:')
-    let reason = args.slice(1).join(' ');
-    if (message.mentions.users.size < 1) return message.channel.send(`Need to tag a user to see there warnings`)
-    let user = message.mentions.users.first();
-    sql.get(`SELECT * FROM warnings WHERE guildId = "${message.guild.id}" AND userId = "${user.id}"`).then(row => {
-      if (!row) return message.channel.send(user.username + " has " + `0` + " warning(s)")
-    if (row.userwarnings === 0) {
-      message.channel.send(user.username + " has " + row.userwarnings + " warning(s).")
-    } else {
-      sql.run(`DELETE FROM warnings WHERE guildId = "${message.guild.id}" AND userId = "${user.id}"`)
-      message.channel.send(user.username + " " + `${row.userwarnings - 1}` + " warning(s) have been removed.")
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have the `KICK_MEMBERS` permission. :x:");
     }
-  })
-  } catch (err) {
-    message.channel.send("A error happened oops, more details: " + err + " report this to the dev.")
-  }
-}
-}
-   
+
+    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("I need the `KICK_MEMBERS` permission to run this command. :x:");
+    }
+
+    const user = message.mentions.users.first();
+    if (!user) {
+        return message.channel.send("You need to tag a user to check or remove their warnings.");
+    }
+
+    try {
+        const row = db.prepare(`
+            SELECT * FROM warnings 
+            WHERE guildId = ? AND userId = ?
+        `).get(message.guild.id, user.id);
+
+        if (!row) {
+            return message.channel.send(`${user.username} has 0 warning(s).`);
+        }
+
+        if (row.userwarnings === 0) {
+            return message.channel.send(`${user.username} has 0 warning(s).`);
+        }
+
+        db.prepare(`
+            DELETE FROM warnings 
+            WHERE guildId = ? AND userId = ?
+        `).run(message.guild.id, user.id);
+
+        message.channel.send(`${user.username} had ${row.userwarnings - 1} warning(s) removed.`);
+
+    } catch (err) {
+        console.error(err);
+        message.channel.send("An error occurred: " + err.message);
+    }
+};
