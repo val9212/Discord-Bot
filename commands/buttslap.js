@@ -1,6 +1,6 @@
 const { Client, PermissionsBitField, AttachmentBuilder } = require('discord.js');
 const fetch = require('node-fetch');
-const fs = require('fs/promises');  // Utilisation de fs/promises
+const fs = require('fs/promises');
 const { createCanvas, loadImage } = require('canvas');
 
 exports.run = async (client, message, args) => {
@@ -13,7 +13,7 @@ exports.run = async (client, message, args) => {
   }
 
   const getSlapped = async (slapper, slapped) => {
-    const plate = await fs.readFile('./assets/images/plate_buttslap.png');  // Utilisation de fs.promises.readFile
+    const plate = await fs.readFile('./assets/images/plate_buttslap.png'); 
     const pngSlapper = slapper.replace('.gif', '.png');
     const pngSlapped = slapped.replace('.gif', '.png');
     
