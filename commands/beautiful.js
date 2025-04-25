@@ -1,28 +1,43 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const snek = require('snekfetch');
-const fsn = require('fs-nextra');
+const { AttachmentBuilder, PermissionsBitField } = require('discord.js');
+const { createCanvas, loadImage } = require('canvas');
+const fs = require('fs/promises');
+const fetch = require('node-fetch');
+
 exports.run = async (client, message, args) => {
-  if (!message.guild.member(client.user).hasPermission('ATTACH_FILES')) return message.reply('Sorry, i dont have the perms to do this cmd i need ATTACH_FILES. :x:')
-   const { Canvas } = require('canvas-constructor');
-    if (message.mentions.users.size < 1) return message.channel.send("You didn't mention a user to make them beautiful");
-   const getSlapped = async (person) => {
-    const plate = await fsn.readFile('./assets/images/plate_beautiful.png');
-    const png = person.replace('.gif', '.png');
-    const { body } = await snek.get(png);
-    return new Canvas(634, 675)
-    .setColor(0x00A2E8)
-    .addRect(0, 0, 634, 675)
-    .addImage(body, 423, 45, 168, 168)
-    .addImage(body, 426, 382, 168, 168)
-    .addImage(plate, 0, 0, 634, 675)
-    .toBuffer();
+  if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.AttachFiles)) {
+    return message.reply("Sorry, I need the `ATTACH_FILES` permission to run this command. :x:");
   }
-     try {
-    const person = message.mentions.users.first().avatarURL;
-    const result = await getSlapped(person);
-    await message.channel.send({ files: [{ attachment: result, name: 'beautiful.png' }] });
-  } catch (error) {
-    throw error;
+
+  const user = message.mentions.users.first();
+  if (!user) return message.channel.send("You didn't mention a user to make them beautiful!");
+
+  const getBeautifulImage = async (avatarURL) => {
+    const plate = await fs.readFile('./assets/images/plate_beautiful.png');
+    const pngAvatarURL = avatarURL.replace('.gif', '.png') + '?size=512';
+    const response = await fetch(pngAvatarURL);
+    const avatarBuffer = await response.arrayBuffer();
+    const avatarImage = await loadImage(Buffer.from(avatarBuffer));
+    const plateImage = await loadImage(plate);
+
+    const canvas = createCanvas(634, 675);
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#00A2E8';
+    ctx.fillRect(0, 0, 634, 675);
+    ctx.drawImage(avatarImage, 423, 45, 168, 168);
+    ctx.drawImage(avatarImage, 426, 382, 168, 168);
+    ctx.drawImage(plateImage, 0, 0, 634, 675);
+
+    return canvas.toBuffer();
+  };
+
+  try {
+    const avatarURL = user.displayAvatarURL({ extension: 'png', size: 512 });
+    const resultBuffer = await getBeautifulImage(avatarURL);
+    const attachment = new AttachmentBuilder(resultBuffer, { name: 'beautiful.png' });
+    await message.channel.send({ files: [attachment] });
+  } catch (err) {
+    console.error(err);
+    message.reply("Something went wrong while generating the image. :x:");
   }
-}
+};
