@@ -78,11 +78,11 @@ fs.readdir('./events', (err, files) => {
 
 client.on("guildCreate", async (guild) => {
   try {
-  console.log(`Someone added Mister UwU to their discord! ${guild.name} Member count: ${guild.memberCount} owned by: ${guild.owner.user.username}!`)
+  console.log(`Someone added ${config.BOT_NAME} to their discord! ${guild.name} Member count: ${guild.memberCount} owned by: ${guild.owner.user.username}!`)
   const owner = guild.owner.user
   var guildMsg = [
       "Thanks for adding me to your server. Just a few tips to get you started..",
-      "```**1.** UwU default prefix is `>`.",
+      "```**1.** My default prefix is `>`.",
       "**2.** Commands will not work in direct messages.",
       "**3.** Set welcome leave messages with >welcomeleave.",
       "**4.** Set logs channel with >logs [channel name].",
@@ -98,7 +98,7 @@ client.on("guildCreate", async (guild) => {
 });
 
 client.on('guildDelete', (guild) => {
-  console.log(`Someone removed UwU from their discord! ${guild.name} Member count: ${guild.memberCount} owned by: ${guild.owner.user.username}!`)
+  console.log(`Someone ${config.BOT_NAME} from their discord! ${guild.name} Member count: ${guild.memberCount} owned by: ${guild.owner.user.username}!`)
   db.prepare(`DELETE FROM scores WHERE guildId = ?`).run(guild.id)
 });
 
