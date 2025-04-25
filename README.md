@@ -1,5 +1,7 @@
 # Discord Bot
 
+> **Note:** The bot is currently being migrated from Discord.js v11 to Discord.js v14. It is normal if some features are not fully functional during this process.
+
 ## Bot Description
 This bot is designed to offer a wide range of functionalities for server management, moderation, fun, and user engagement. It supports server administrators with tools for controlling the environment, including moderation commands such as banning, muting, and purging messages. Additionally, it includes advanced features like automod, slowmode, and role management.
 
