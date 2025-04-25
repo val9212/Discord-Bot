@@ -8,7 +8,7 @@ exports.run = (client, message, args) => {
       { name: "Special thanks too:", value: `SciTeCh#9693  \nkrilex#9854` }
     )
     .setTimestamp()
-    .setFooter({ text: client.user.username, iconURL: client.user.avatarURL() });  // Make sure to call avatarURL()
+    .setFooter({ text: client.user.username, iconURL: client.user.avatarURL() });
 
   message.channel.send({ embeds: [embed] });
 };
