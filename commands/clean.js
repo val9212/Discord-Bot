@@ -1,4 +1,5 @@
 const { PermissionsBitField } = require('discord.js');
+const config = require("../config.js")
 
 exports.run = async (client, message, args) => {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
@@ -16,7 +17,7 @@ exports.run = async (client, message, args) => {
         }
 
         await message.channel.bulkDelete(botMessages, true);
-        message.channel.send("**Mister UWU messages have been deleted**").then(msg => {
+        message.channel.send(`**${config.BOT_NAME} messages have been deleted**`).then(msg => {
             setTimeout(() => msg.delete().catch(() => {}), 5000);
         });
     } catch (error) {
