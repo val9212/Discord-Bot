@@ -1,12 +1,14 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
+const { Client, EmbedBuilder } = require("discord.js");
+
 exports.run = (client, message, args) => {
-      const embed = new Discord.RichEmbed()
-      .setColor(0x00A2E8)
-      .addField("Developer", "val92#4488, Difalixe#7991")
-      .addField("Special thanks too:", `SciTeCh#9693  \nkrilex#9854`)
-      .setTimestamp()
-      .setFooter(client.user.username, client.user.avatarURL);
-      message.channel.send({embed}) 
- }
-   
+  const embed = new EmbedBuilder()
+    .setColor(0x00A2E8)
+    .addFields(
+      { name: "Developer", value: "val92, Difalixe#7991" },
+      { name: "Special thanks too:", value: `SciTeCh#9693  \nkrilex#9854` }
+    )
+    .setTimestamp()
+    .setFooter({ text: client.user.username, iconURL: client.user.avatarURL() });  // Make sure to call avatarURL()
+
+  message.channel.send({ embeds: [embed] });
+};
