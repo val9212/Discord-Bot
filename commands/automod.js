@@ -1,131 +1,85 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-exports.run = (client, message, args) => {
-    if (!message.member.hasPermission("MANAGE_GUILD")) return message.channel.send("You're missing MANAGE_GUILD permission");
-    if (!message.guild.member(client.user).hasPermission('MANAGE_MESSAGES')) return message.reply('Sorry, i dont have the perms to do this cmd i need MANAGE_MESSAGES. :x:')
-    sql.get(`SELECT * FROM scores WHERE guildId ="${message.guild.id}"`).then(row => {
-        const prefixtouse = row.prefix
-        const embed10 = new Discord.RichEmbed()
-                .setColor(0x00A2E8)
-                .setThumbnail(client.user.avatarURL)
-                .setTitle("Command: " + prefixtouse + "automod")
-                .addField("Usage", prefixtouse + "automod [enable/disable] [antiinvite/antiweblink/antidupcharacters]")
-                .addField("Example", prefixtouse + "automod enable antiinvite")
-                .setDescription("Description: " + "Enables/disables the bots auto moderation.");
+const { PermissionsBitField, EmbedBuilder } = require('discord.js');
+const Database = require('better-sqlite3');
+const db = new Database("./assets/guildsettings.sqlite");
 
-        const toenable = args[0]
-        const thingtoenable = args.slice(1).join(` `);
-        if (toenable < 1) return message.channel.send(embed10)
-        if (thingtoenable < 1) return message.channel.send(embed10)
+exports.run = async (client, message, args) => {
+  if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+    return message.channel.send("You're missing MANAGE_GUILD permission.");
+  }
 
-                if (toenable === "enable" && thingtoenable === "antiinvite") {
-                       sql.run(`UPDATE scores SET automoderation = "enabled", invitelinkprotection = "enabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                       message.channel.send("Auto moderation with anti invite is has been enabled for this guild.")
-                       let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                       const embed = new Discord.RichEmbed()
-                           .setColor(0x00A2E8)
-                           .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Enabled")
-                           .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                           .addField("Auto Mod Tool", "Anti Invite")
-                           .setFooter("Time used: " + message.createdAt.toDateString())
-                           if (!modlog) return;
-                           if (row.logsenabled === "disabled") return;
-                           client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "enable" && thingtoenable === "antiweblink") {
-                       sql.run(`UPDATE scores SET automoderation = "enabled", websitelinkprotection = "enabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                       message.channel.send("Auto moderation with anti website link is has been enabled for this guild.")
-                       let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                       const embed = new Discord.RichEmbed()
-                           .setColor(0x00A2E8)
-                           .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Enabled")
-                           .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                           .addField("Auto Mod Tool", "Anti Website Link")
-                           .setFooter("Time used: " + message.createdAt.toDateString())
-                           if (!modlog) return;
-                           if (row.logsenabled === "disabled") return;
-                           client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "enable" && thingtoenable === "antidupcharacters") {
-                       sql.run(`UPDATE scores SET automoderation = "enabled", dupcharactersprotection = "enabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                       message.channel.send("Auto moderation with anti duplicate characters is has been enabled for this guild.")
-                       let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                       const embed = new Discord.RichEmbed()
-                           .setColor(0x00A2E8)
-                           .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Enabled")
-                           .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                           .addField("Auto Mod Tool", "Anti Duplicate Characters")
-                           .setFooter("Time used: " + message.createdAt.toDateString())
-                           if (!modlog) return;
-                           if (row.logsenabled === "disabled") return;
-                           client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "enable" && thingtoenable === "all") {
-                       sql.run(`UPDATE scores SET automoderation = "enabled", invitelinkprotection = "enabled", websitelinkprotection = "enabled", dupcharactersprotection = "enabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                       message.channel.send("Auto moderation with all tools has been enabled for this guild.")
-                       let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                       const embed = new Discord.RichEmbed()
-                           .setColor(0x00A2E8)
-                           .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Enabled")
-                           .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                           .addField("Auto Mod Tool", "All")
-                           .setFooter("Time used: " + message.createdAt.toDateString())
-                           if (!modlog) return;
-                           if (row.logsenabled === "disabled") return;
-                           client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "disable" && thingtoenable === "antiinvite") {
-                   sql.run(`UPDATE scores SET automoderation = "enabled", invitelinkprotection = "disabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                   message.channel.send("Anit invite has been disabled for this guild.")      
-                   let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                   const embed = new Discord.RichEmbed()
-                       .setColor(0x00A2E8)
-                       .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Disabled")
-                       .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                       .addField("Auto Mod Tool", "Anti Invite")
-                       .setFooter("Time used: " + message.createdAt.toDateString())
-                   if (!modlog) return;
-                   if (row.logsenabled === "disabled") return;
-                   client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "disable" && thingtoenable === "antiweblink") {
-                   sql.run(`UPDATE scores SET automoderation = "enabled", websitelinkprotection = "disabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                   message.channel.send("Anit website link has been disabled for this guild.")                   
-                   let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                   const embed = new Discord.RichEmbed()
-                       .setColor(0x00A2E8)
-                       .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Disabled")
-                       .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                       .addField("Auto Mod Tool", "Anti Website link")
-                       .setFooter("Time used: " + message.createdAt.toDateString())
-                   if (!modlog) return;
-                   if (row.logsenabled === "disabled") return;
-                   client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "disable" && thingtoenable === "antidupcharacters") {
-                   sql.run(`UPDATE scores SET automoderation = "enabled", dupcharactersprotection = "disabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                   message.channel.send("Anit duplicate characters has been disabled for this guild.")
-                   let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                   const embed = new Discord.RichEmbed()
-                       .setColor(0x00A2E8)
-                       .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Disabled")
-                       .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                       .addField("Auto Mod Tool", "Anti Website link")
-                       .setFooter("Time used: " + message.createdAt.toDateString())
-                   if (!modlog) return;
-                   if (row.logsenabled === "disabled") return;
-                   client.channels.get(modlog.id).send({embed});
-                } else if (toenable === "disable" && thingtoenable === "all") {
-                   sql.run(`UPDATE scores SET automoderation = "disabled", invitelinkprotection = "disabled", websitelinkprotection = "disabled", dupcharactersprotection = "disabled", casenumber = ${row.casenumber + 1} WHERE guildId = ${message.guild.id}`);
-                   message.channel.send("All auto moderation has been disabled for this guild.")
-                   let modlog = message.guild.channels.find(channel => channel.name == row.logschannel);
-                   const embed = new Discord.RichEmbed()
-                       .setColor(0x00A2E8)
-                       .setTitle("Case #" + row.casenumber + " | Action:  Auto Mod Disabled")
-                       .addField("Moderator", message.author.tag + " (ID: " + message.author.id + ")")
-                       .addField("Auto Mod Tool", "All")
-                       .setFooter("Time used: " + message.createdAt.toDateString())
-                   if (!modlog) return;
-                   if (row.logsenabled === "disabled") return;
-                   client.channels.get(modlog.id).send({embed});
-                } else {
-                    message.channel.send(embed10)
-                }
-            })
-        }
+  if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+    return message.reply("I need the MANAGE_MESSAGES permission to run this command. :x:");
+  }
+
+  const row = db.prepare('SELECT * FROM scores WHERE guildId = ?').get(message.guild.id);
+  const prefix = row?.prefix || "!";
+
+  const embedHelp = new EmbedBuilder()
+    .setColor(0x00A2E8)
+    .setThumbnail(client.user.displayAvatarURL())
+    .setTitle(`Command: ${prefix}automod`)
+    .setDescription("Enables/disables the bot's auto moderation.")
+    .addFields(
+      { name: "Usage", value: `${prefix}automod [enable/disable] [antiinvite/antiweblink/antidupcharacters/all]` },
+      { name: "Example", value: `${prefix}automod enable antiinvite` }
+    );
+
+  const action = args[0];
+  const option = args[1];
+
+  if (!["enable", "disable"].includes(action) || !option) {
+    return message.channel.send({ embeds: [embedHelp] });
+  }
+
+  const settingsMap = {
+    antiinvite: "invitelinkprotection",
+    antiweblink: "websitelinkprotection",
+    antidupcharacters: "dupcharactersprotection"
+  };
+
+  const updateSettings = (enableAll, disableAll, toolName) => {
+    const fields = {
+      automoderation: enableAll ? "enabled" : disableAll ? "disabled" : "enabled",
+      casenumber: row.casenumber + 1
+    };
+
+    if (option === "all") {
+      fields.invitelinkprotection = enableAll ? "enabled" : "disabled";
+      fields.websitelinkprotection = enableAll ? "enabled" : "disabled";
+      fields.dupcharactersprotection = enableAll ? "enabled" : "disabled";
+    } else {
+      const key = settingsMap[option];
+      if (key) fields[key] = enableAll ? "enabled" : "disabled";
+      else return message.channel.send({ embeds: [embedHelp] });
+    }
+
+    const query = `
+      UPDATE scores
+      SET ${Object.keys(fields).map(k => `${k} = @${k}`).join(', ')}
+      WHERE guildId = @guildId
+    `;
+    db.prepare(query).run({ ...fields, guildId: message.guild.id });
+
+    message.channel.send(`Auto moderation ${enableAll ? "enabled" : "disabled"} for ${option}.`);
+
+    const logChannel = message.guild.channels.cache.find(ch => c.id === row.logschannel);
+    if (logChannel && row.logsenabled !== "disabled") {
+      const embedLog = new EmbedBuilder()
+        .setColor(0x00A2E8)
+        .setTitle(`Case #${row.casenumber + 1} | Action: Auto Mod ${enableAll ? "Enabled" : "Disabled"}`)
+        .addFields(
+          { name: "Moderator", value: `${message.author.tag} (ID: ${message.author.id})` },
+          { name: "Auto Mod Tool", value: option === "all" ? "All" : toolName },
+          { name: "Time", value: new Date().toDateString() }
+        );
+      logChannel.send({ embeds: [embedLog] });
+    }
+  };
+
+  const actionMap = {
+    enable: () => updateSettings(true, false, option),
+    disable: () => updateSettings(false, true, option)
+  };
+
+  actionMap[action]();
+};
