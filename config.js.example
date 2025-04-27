@@ -1,0 +1,25 @@
+//Configuration file — if you don't fill in every parameter, some features won't work.
+// Remove ".example" to use.
+
+//General
+exports.TOKEN = '';
+exports.PREFIX = '';
+exports.BOT_NAME = '';
+exports.PAYPAL_EMAIL = '';
+exports.PATREON = '';
+exports.BOT_INVITE = '';
+exports.OWNER_ID = '';
+
+//Google API_KEY
+exports.GOOGLE_API_KEY = '';
+
+//Cleverbot
+exports.CLEVERBOT_KEY = '';
+exports.CLEVERBOT_USER = '';
+exports.CLEVERBOT_NICK = '';
+
+//Freecurrency
+exports.FREECURRENCY_KEY = '';
+
+//E621 & E926
+exports.E621_USER = '';
