@@ -1,6 +1,8 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-exports.run = (client, message, args) => {
-    message.channel.send('Voice Channels: ' + `${message.guild.channels.filter(chan => chan.type === 'voice').size} | Text Channels:  ${message.guild.channels.filter(chan => chan.type === 'text').size}`)
-}
-   
+const { ChannelType } = require('discord.js');
+
+exports.run = async (client, message, args) => {
+  const voiceChannels = message.guild.channels.cache.filter(channel => channel.type === ChannelType.GuildVoice).size;
+  const textChannels = message.guild.channels.cache.filter(channel => channel.type === ChannelType.GuildText).size;
+
+  await message.channel.send(`Voice Channels: ${voiceChannels} | Text Channels: ${textChannels}`);
+};
