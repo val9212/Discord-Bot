@@ -1,30 +1,69 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const Fortnite = require("fortnite");
-const fortnite = new Fortnite("aad90c86-7bf3-40f3-8055-aa47a190ddce")
+const { EmbedBuilder } = require('discord.js');
+const axios = require('axios');
+const config = require('../config.js')
+
 exports.run = async (client, message, args) => {
-    try {
-    const data = await fortnite.getInfo(args.splice(1).join(" "), args[0]);
-    const embed = new Discord.RichEmbed()
-      .setTitle(`${data.username}, on ${data.platformNameLong}`)
-      .setURL(`https://partybus.gg/player/${data.username}`)
-      .addField("Squads", `**Top 6 :** ${data.lifetimeStats[3].value}\n**Top 3 :** ${data.lifetimeStats[2].value}\n**Wins:** ${data.stats.p9.top1.value}\n**KD:** ${data.stats.p9.kd.value}\n**Matches Played:** ${data.stats.p9.matches.value}\n**Kills:** ${data.stats.p9.kills.value}\n**Kills Per Game:** ${data.stats.p9.kpg.value}`, true)
-      .addField("Duo", `**Top 12 :** ${data.lifetimeStats[4].value}\n**Top 5 :** ${data.lifetimeStats[1].value}\n**Wins:** ${data.stats.p10.top1.value}\n**KD:** ${data.stats.p10.kd.value}\n**Matches Played:** ${data.stats.p10.matches.value}\n**Kills:** ${data.stats.p10.kills.value}\n**Kills Per Game:** ${data.stats.p10.kpg.value}`, true)
-      .addField("Solo", `**Top 25 :** ${data.lifetimeStats[5].value}\n**Top 10 :** ${data.lifetimeStats[0].value}\n**Wins:** ${data.stats.p2.top1.value}\n**KD:** ${data.stats.p2.kd.value}\n**Matches Played:** ${data.stats.p2.matches.value}\n**Kills:** ${data.stats.p2.kills.value}\n**Kills Per Game:** ${data.stats.p2.kpg.value}`, true)
-      .addBlankField()
-      .addField("Score", data.lifetimeStats[6].value, true)
-      .addField("Matches", data.lifetimeStats[7].value, true)
-      .addField("Total Wins", data.lifetimeStats[8].value, true)
-      .addField("Win Rate", data.lifetimeStats[9].value, true)
-      .addField("Kills", data.lifetimeStats[10].value, true)
-      .addField("KDR", data.lifetimeStats[11].value, true)
-      .addField("Kills Per Minute", data.lifetimeStats[12].value, true)
-      .addField("Time Played", data.lifetimeStats[13].value, true)
-      .addField("Average Survival Time", data.lifetimeStats[14].value, true)
+  const platform = args[0];
+  const username = args.slice(1).join(' ');
+
+  if (!platform || !username) {
+    return message.channel.send("Usage: `!fortnite [platform] [username]`");
+  }
+
+  try {
+    const response = await axios.get(`https://public-api.tracker.gg/v2/fortnite/standard/profile/${platform}/${encodeURIComponent(username)}`, {
+      headers: {
+        'TRN-Api-Key': config.FORTNITE_KEY
+      }
+    });
+
+    const data = response.data.data;
+    const overview = data.segments.find(seg => seg.type === 'overview')?.stats;
+    const solo = data.segments.find(seg => seg.metadata.name === 'Solo')?.stats;
+    const duo = data.segments.find(seg => seg.metadata.name === 'Duo')?.stats;
+    const squad = data.segments.find(seg => seg.metadata.name === 'Squad')?.stats;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${data.platformInfo.platformUserHandle} - ${data.platformInfo.platformSlug}`)
+      .setURL(`https://tracker.gg/fortnite/profile/${platform}/${data.platformInfo.platformUserHandle}/overview`)
       .setColor(0x00A2E8)
-      message.channel.send(embed)
+      .addFields(
+        { name: "__Overall__", value: `
+**Wins:** ${overview?.wins.displayValue || 'N/A'}
+**Win Rate:** ${overview?.winRatio.displayValue || 'N/A'}
+**Kills:** ${overview?.kills.displayValue || 'N/A'}
+**K/D:** ${overview?.kd.displayValue || 'N/A'}
+**Matches Played:** ${overview?.matchesPlayed.displayValue || 'N/A'}
+        `, inline: false },
+        { name: "__Solo__", value: solo ? `
+**Wins:** ${solo.wins.displayValue}
+**Kills:** ${solo.kills.displayValue}
+**K/D:** ${solo.kd.displayValue}
+**Matches Played:** ${solo.matchesPlayed.displayValue}
+        ` : "No solo data available.", inline: true },
+        { name: "__Duo__", value: duo ? `
+**Wins:** ${duo.wins.displayValue}
+**Kills:** ${duo.kills.displayValue}
+**K/D:** ${duo.kd.displayValue}
+**Matches Played:** ${duo.matchesPlayed.displayValue}
+        ` : "No duo data available.", inline: true },
+        { name: "__Squad__", value: squad ? `
+**Wins:** ${squad.wins.displayValue}
+**Kills:** ${squad.kills.displayValue}
+**K/D:** ${squad.kd.displayValue}
+**Matches Played:** ${squad.matchesPlayed.displayValue}
+        ` : "No squad data available.", inline: true }
+      );
+
+    await message.channel.send({ embeds: [embed] });
+
   } catch (error) {
-    message.channel.send(`Player Not Found or invalid form type.`);
- }
-}
-   
+    console.error(error.response?.data || error.message);
+
+    const errorEmbed = new EmbedBuilder()
+      .setDescription('The player could not be found or the platform is invalid.\nPlease double-check the username and platform.')
+      .setColor(0xFF0000);
+
+    await message.channel.send({ embeds: [errorEmbed] });
+  }
+};
