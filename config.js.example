@@ -23,3 +23,6 @@ exports.FREECURRENCY_KEY = '';
 
 //E621 & E926
 exports.E621_USER = '';
+
+//Fortnite
+exports.FORTNITE_KEY = ''
