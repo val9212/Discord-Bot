@@ -1,33 +1,42 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-exports.run = (client, message, args) => {
-    if (!message.member.hasPermission("MANAGE_GUILD")) return message.channel.send("Need MANAGE_GUILD permission to use this command.")
-    const user = message.mentions.users.first();
-     if (message.mentions.users.size < 1) {
-        const amount = parseInt(args[0]);
-        if (amount < 1) return message.channel.send("Didnt provide any money to give.");
-        sql.get(`SELECT * FROM profiles WHERE guildId ="${message.guild.id}" AND userId ="${message.author.id}"`).then(row2 => {
-            if (!row2) message.channel.send("You needs to start talking first.")
-            const doingmath = row2.cash + row2.bank
-               if (doingmath >= 999999) return message.channel.send("Max money is $999999")
-               if (amount >= 999999) return message.channel.send("Max money to give is $999999")
-               if (isNaN(amount)) return message.channel.send("Not a valid number")
-               sql.run(`UPDATE profiles SET cash = ${row2.cash += amount} WHERE guildId ="${message.guild.id}" AND userId = ${message.author.id}`);
-               message.channel.send("I have given money to: " + message.author.username + " $" + amount);
-        })
-     } else {
-     const amount = parseInt(args[1]);
-     if (amount < 1) return message.channel.send("Didnt provide any money to give.");
-    sql.get(`SELECT * FROM profiles WHERE guildId ="${message.guild.id}" AND userId ="${user.id}"`).then(row => {
-     if (!row) message.channel.send("User needs to start talking first.")
-     const doingmath = row.cash + row.bank
-        if (doingmath >= 999999) return message.channel.send("Max money is $999999")
-        if (amount >= 999999) return message.channel.send("Max money to give is $999999")
-        if (isNaN(amount)) return message.channel.send("Not a valid number")
-        sql.run(`UPDATE profiles SET cash = ${row.cash += amount} WHERE guildId ="${message.guild.id}" AND userId = ${user.id}`);
-        message.channel.send("I have given money to: " + user.username + " $" + amount);
-        })
-    }
-}
+const { PermissionsBitField } = require('discord.js');
+const Database = require('better-sqlite3');
+const db = new Database("./assets/guildsettings.sqlite");
+
+
+exports.run = async (client, message, args) => {
+  if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+    return message.channel.send("You need `MANAGE_GUILD` permission to use this command.");
+  }
+
+  const user = message.mentions.users.first();
+  const amountArg = user ? args[1] : args[0];
+  const amount = parseInt(amountArg, 10);
+
+  if (isNaN(amount) || amount < 1) {
+    return message.channel.send("Please provide a valid amount greater than 0.");
+  }
+
+  if (amount >= 999999) {
+    return message.channel.send("The maximum amount to give is $999999.");
+  }
+
+  const targetUser = user || message.author;
+
+  const row = db.prepare('SELECT * FROM profiles WHERE guildId = ? AND userId = ?').get(message.guild.id, targetUser.id);
+
+  if (!row) {
+    return message.channel.send(`${targetUser.username} needs to start talking first.`);
+  }
+
+  const totalMoney = row.cash + row.bank;
+
+  if (totalMoney >= 999999) {
+    return message.channel.send("Max money is $999999.");
+  }
+
+  const newCash = row.cash + amount;
+  db.prepare('UPDATE profiles SET cash = ? WHERE guildId = ? AND userId = ?')
+    .run(newCash, message.guild.id, targetUser.id);
+
+  await message.channel.send(`✅ I have given $${amount} to **${targetUser.username}**.`);
+};
