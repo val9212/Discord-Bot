@@ -1,6 +1,5 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
 exports.run = (client, message, args) => {
-      message.reply(" Hello, World!")
-}
+      message.reply("Hello World!");
+    };
+
    
