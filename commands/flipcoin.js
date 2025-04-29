@@ -1,33 +1,60 @@
-const Discord = require("discord.js");
-const bot = new Discord.Client();
-const sql = require("sqlite");
-sql.open("./assets/guildsettings.sqlite");
-exports.run = (client, message, args) => {
+const { EmbedBuilder } = require('discord.js');
+const Database = require('better-sqlite3');
+const db = new Database('./assets/guildsettings.sqlite');
+
+exports.run = async (client, message, args) => {
   try {
-    var number = parseInt(args[0]);
-    const wonamount = (Math.round(number * 1.25))
-    var headsortails = args.slice(1).join("")
-    sql.get(`SELECT * FROM profiles WHERE guildId ="${message.guild.id}" AND userId ="${message.author.id}"`).then(row => {
-      var coinflips = ['Heads!','Tails!'];
-      const coinflip = coinflips[Math.floor(Math.random () * coinflips.length)];
-      if (coinflip === 'Heads!' && headsortails === "heads") {
-        sql.run(`UPDATE profiles SET cash = ${row.cash += wonamount} WHERE guildId ="${message.guild.id}" AND userId = ${message.author.id}`);
-        message.channel.send("Coin flipped and it landed on heads and you win $" + wonamount + ".")
-      } else if (coinflip === 'Heads!' && headsortails === "tails") {
-        sql.run(`UPDATE profiles SET cash = ${row.cash -= number} WHERE guildId ="${message.guild.id}" AND userId = ${message.author.id}`);
-        message.channel.send("Coin flipped and it landed on heads and you lose $" + number + ".")
-      } else if (coinflip === 'Tails!' && headsortails === "tails") {
-        sql.run(`UPDATE profiles SET cash = ${row.cash += wonamount} WHERE guildId ="${message.guild.id}" AND userId = ${message.author.id}`);
-        message.channel.send("Coin flipped and it landed on tails and you win $" + wonamount + ".")
-      } else if (coinflip === 'Tails!' && headsortails === "heads") {
-        sql.run(`UPDATE profiles SET cash = ${row.cash -= number} WHERE guildId ="${message.guild.id}" AND userId = ${message.author.id}`);
-        message.channel.send("Coin flipped and it landed on tails and you lose $" + number + ".")
-      } else {
-        message.channel.send("That option wasnt found, command usage >flipcoin [bet] [heads/tails]")
-      }
-    })
-  } catch (err) {
-    console.log(err)
-  } 
-}
-   
+    const betAmount = parseInt(args[0], 10);
+    const choice = args[1]?.toLowerCase();
+
+    if (isNaN(betAmount) || betAmount <= 0 || (choice !== "heads" && choice !== "tails")) {
+      return message.channel.send("Usage: `!flipcoin [bet amount] [heads/tails]`");
+    }
+
+    const getProfile = db.prepare('SELECT * FROM profiles WHERE guildId = ? AND userId = ?');
+    const profile = getProfile.get(message.guild.id, message.author.id);
+
+    if (!profile) {
+      return message.channel.send("You don't have a profile yet.");
+    }
+
+    if (profile.cash < betAmount) {
+      return message.channel.send("You don't have enough money to place that bet.");
+    }
+
+    const coinflip = Math.random() < 0.5 ? 'heads' : 'tails';
+    const wonAmount = Math.round(betAmount * 1.25);
+
+    let newCash = profile.cash;
+    let resultText = '';
+    let color = 'Red';
+
+    if (coinflip === choice) {
+      newCash += wonAmount;
+      resultText = `🪙 The coin landed on **${coinflip}**!\nYou **won** $${wonAmount}! 🎉`;
+      color = 'Green';
+    } else {
+      newCash -= betAmount;
+      resultText = `🪙 The coin landed on **${coinflip}**!\nYou **lost** $${betAmount}. 😢`;
+    }
+
+    const updateProfile = db.prepare('UPDATE profiles SET cash = ? WHERE guildId = ? AND userId = ?');
+    updateProfile.run(newCash, message.guild.id, message.author.id);
+
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setTitle('Coin Flip')
+      .setDescription(resultText)
+      .addFields({ name: 'New Balance', value: `$${newCash}`, inline: true })
+      .setTimestamp();
+
+    await message.channel.send({
+      content: `${message.author.username} flipped a coin!`,
+      embeds: [embed]
+    });
+
+  } catch (error) {
+    console.error(error);
+    await message.channel.send("An error occurred while flipping the coin.");
+  }
+};
